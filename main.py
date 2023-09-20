@@ -5,7 +5,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 import numpy as np
 
 # Global variables
-plot_lines = []  # Store lines for each trajectory
+plot_lines = {}  # Store lines for each trajectory with corresponding labels
 show_grid = True  # Initial grid state
 x_range = 20  # Initial x-axis range
 y_range = 20  # Initial y-axis range
@@ -51,9 +51,9 @@ def simulate():
         
         # Plot the trajectory
         line, = ax.plot(x_values, y_values, linestyle='-', marker='o', markersize=5)
-        plot_lines.append(line)
-        ax.legend([f'Trajectory {len(plot_lines)}'], loc='upper right')
-
+        plot_lines[line] = f'Trajectory {len(plot_lines) + 1}'  # Store line with label
+        update_legend_dropdown()
+        
         # Show/hide grid based on the checkbox
         ax.grid(show_grid)
 
@@ -111,11 +111,60 @@ def update_y_range():
 # Function to clear the plot
 def clear_plot():
     global plot_lines
-    for line in plot_lines:
+    for line in plot_lines.keys():
         line.remove()
     plot_lines.clear()
-    ax.legend_.remove()
+    update_legend_dropdown()  # Clear the legend dropdown
     canvas.draw()
+
+# Function to handle mouse wheel event for zooming
+def on_mousewheel(event):
+    global x_range, y_range
+    x_range_start, x_range_end = ax.get_xlim()
+    y_range_start, y_range_end = ax.get_ylim()
+
+    x_scale_factor = 0.1  # Adjust the scaling factor as needed (smaller value for slower zoom)
+    y_scale_factor = 0.1
+
+    if event.delta > 0:
+        # Zoom in
+        x_range_start += (x_range_end - x_range_start) * x_scale_factor
+        x_range_end -= (x_range_end - x_range_start) * x_scale_factor
+        y_range_start += (y_range_end - y_range_start) * y_scale_factor
+        y_range_end -= (y_range_end - y_range_start) * y_scale_factor
+    else:
+        # Zoom out
+        x_range_start -= (x_range_end - x_range_start) * x_scale_factor
+        x_range_end += (x_range_end - x_range_start) * x_scale_factor
+        y_range_start -= (y_range_end - y_range_start) * y_scale_factor
+        y_range_end += (y_range_end - y_range_start) * y_scale_factor
+    
+    ax.set_xlim(max(0, x_range_start), max(0, x_range_end))
+    ax.set_ylim(max(0, y_range_start), max(0, y_range_end))
+    canvas.draw()
+
+# Function to update the legend dropdown
+def update_legend_dropdown():
+    trajectory_names = list(plot_lines.values())
+    trajectory_dropdown['values'] = trajectory_names
+
+# Function to handle legend selection in the dropdown
+def select_trajectory(event):
+    selected_trajectory_name = trajectory_dropdown.get()
+    selected_line = None
+
+    # Find the line associated with the selected trajectory name
+    for line, label in plot_lines.items():
+        if label == selected_trajectory_name:
+            selected_line = line
+            break
+
+    if selected_line:
+        # Highlight the selected line
+        for line in plot_lines.keys():
+            line.set_alpha(0.2)  # Dim all lines
+        selected_line.set_alpha(1.0)  # Highlight selected line
+        canvas.draw()
 
 # Create the main window
 root = tk.Tk()
@@ -183,6 +232,10 @@ y_range_end_entry.grid(row=3, column=3, padx=5, pady=5, sticky="w")
 y_range_apply_button = ttk.Button(range_frame, text="Apply", command=update_y_range)
 y_range_apply_button.grid(row=3, column=4, padx=5, pady=5, sticky="w")
 
+# Clear Button (Same row as the range entries)
+clear_button = ttk.Button(range_frame, text="Clear Plot", command=clear_plot)
+clear_button.grid(row=1, column=5, rowspan=3, padx=5, pady=5, sticky="w")
+
 # Third Row: Max Height, Range, Time of Flight
 metrics_frame = ttk.Frame(input_frame)
 metrics_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -214,6 +267,14 @@ canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 toolbar = NavigationToolbar2Tk(canvas, root)
 toolbar.update()
 canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+# Bind mousewheel event to the canvas for zooming
+canvas.get_tk_widget().bind("<MouseWheel>", on_mousewheel)
+
+# Legend Dropdown
+trajectory_dropdown = ttk.Combobox(root, values=[], state="readonly")
+trajectory_dropdown.bind("<<ComboboxSelected>>", select_trajectory)
+trajectory_dropdown.pack(pady=5)
 
 # Start the GUI event loop
 root.mainloop()
