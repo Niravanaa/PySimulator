@@ -16,9 +16,9 @@ This is a Python application for simulating 2D projectile motion and visualizing
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/2D-Projectile-Motion-Simulator.git
+git clone https://github.com/Niravanaa/PySimulator.git
 
-cd 2D-Projectile-Motion-Simulator
+cd PySimulator
 ```
 
 2. Install the required dependencies:
